@@ -7,10 +7,13 @@ public class s_playerController : MonoBehaviour
 {
     private Rigidbody rb;
     public int speed = 7;
+    public float jumpVelocity = 5f; //Скорость прыжка
+    private float runMultiplate = 1f; //Мультипликатор для бега
     private Renderer renderer;
 
     public float maxDistance = 3.5f;
     public Slider progressBar;
+    public GameObject collectMessage; //Сообщение-подсказка
 
     public GameObject currentFlora;
     private Coroutine Symbiosis;
@@ -21,11 +24,8 @@ public class s_playerController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         renderer = GetComponent<Renderer>();
-
-        if (progressBar != null)
-        {
-            progressBar.gameObject.SetActive(false);
-        }
+        progressBar?.gameObject.SetActive(false);
+        collectMessage?.gameObject.SetActive(false);
     }
 
     private void FixedUpdate()
@@ -33,7 +33,7 @@ public class s_playerController : MonoBehaviour
         float x = Input.GetAxis("Horizontal");
         float z = Input.GetAxis("Vertical");
         Vector3 moveInput = (transform.forward * z + transform.right * x).normalized;
-        rb.MovePosition(rb.position + moveInput * speed * Time.fixedDeltaTime);
+        rb.MovePosition(rb.position + moveInput * speed * Time.fixedDeltaTime * runMultiplate);
     }
 
     void Update()
@@ -50,6 +50,7 @@ public class s_playerController : MonoBehaviour
             if (hit.collider.CompareTag("SwampFlora"))
             {
                 currentFlora = hit.collider.gameObject;
+                collectMessage?.gameObject.SetActive(true); //Показываем сообщение-подсказку при подходе
 
                 if (Input.GetKeyDown(KeyCode.E) && !isProggresing)
                 {
@@ -57,9 +58,27 @@ public class s_playerController : MonoBehaviour
                 }
             }
         }
-        else { checkRayDinstance(); }
+        else { CheckRayDinstance(); }
 
         if (Input.GetKeyUp(KeyCode.E) && isProggresing) { StopSymbiosis(); }
+
+        //Механика прыжка
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            rb.AddForce(Vector3.up * jumpVelocity, ForceMode.Impulse);
+        }
+
+        //Механика бега
+        if (Input.GetKey(KeyCode.LeftShift)) { runMultiplate = 2f; }
+        else { runMultiplate = 1f; }
+
+        //Прячем подсказку при зажатии E, отходе от currentFlora, уничтожении currentFlora
+        if (isProggresing ||
+            (currentFlora != null &&
+            Vector3.Distance(transform.position, currentFlora.transform.position) > maxDistance))
+        {
+            collectMessage?.gameObject.SetActive(false);
+        }
     }
 
     
@@ -96,7 +115,7 @@ public class s_playerController : MonoBehaviour
         SymbiosisCleared();
     }
 
-    void checkRayDinstance()
+    void CheckRayDinstance()
     {
         if (isProggresing && currentFlora != null)
         {
@@ -126,11 +145,7 @@ public class s_playerController : MonoBehaviour
     {
         isProggresing = false;
         Symbiosis = null;
-        if (progressBar != null)
-        {
-            progressBar.gameObject.SetActive(false);
-            
-        }
+        progressBar?.gameObject.SetActive(false);
         Debug.Log("+10 к Био-Энергии!");
 
         if (renderer != null)
